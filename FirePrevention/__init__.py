@@ -1,0 +1,2 @@
+from FirePrevention.FirePrevention import FirePreventionandFight
+print('FirePreventionandFight')
