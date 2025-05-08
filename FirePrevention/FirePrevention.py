@@ -5,59 +5,82 @@ import matplotlib.pyplot as plt
 class FirePreventionandFight:
     
     def __init__(
-                self,
-                num_vertices,
-                num_arestas,
-                postos_brigadistas,
-                pontos_agua,
-                capacidade_caminhoes,
-                consumo_por_fogo=1
-                ):
+            self,
+            num_vertices=None,
+            num_arestas=None,
+            postos_brigadistas=None,
+            pontos_agua=None,
+            capacidade_caminhoes=10,
+            consumo_por_fogo=1,
+            grafo=None
+        ):
         """
         Inicializa o sistema de combate a incêndios com um grafo representando
         o ambiente, os postos dos brigadistas, pontos de água, capacidade dos
         caminhões e consumo de água por foco de incêndio.
 
         Parâmetros:
-        - num_vertices (int): número total de vértices no grafo.
-        - num_arestas (int): número de arestas (conexões entre vértices).
+        - num_vertices (int): número total de vértices no grafo (opcional se grafo for passado).
+        - num_arestas (int): número de arestas (opcional se grafo for passado).
         - postos_brigadistas (list[int]): vértices com postos de brigadistas.
         - pontos_agua (list[int]): vértices com fontes de água.
         - capacidade_caminhoes (int): capacidade de água por caminhão.
         - consumo_por_fogo (int): quantidade de água consumida por foco de fogo.
+        - grafo (nx.Graph): grafo customizado já construído (opcional).
         """
-        self.grafo = nx.Graph()
         self.consumo_por_fogo = consumo_por_fogo
         self.capacidade_caminhoes = capacidade_caminhoes
         self.brigadistas = {}
-        self.postos_brigadistas = set(postos_brigadistas)
-
-        for i in range(num_vertices):
-            self.grafo.add_node(
-                i,
-                fogo=False,
-                agua=False,
-                queimado=False,
-                posto_brigadista=(i in self.postos_brigadistas)
-            )
-
-        arestas_adicionadas = set()
-        while len(arestas_adicionadas) < num_arestas:
-            u, v = random.sample(range(num_vertices), 2)
-            if (u, v) not in arestas_adicionadas and (v, u) not in arestas_adicionadas:
-                peso = random.randint(1, 10)
-                self.grafo.add_edge(u, v, weight=peso)
-                arestas_adicionadas.add((u, v))
-
-        for p in postos_brigadistas:
-            self.brigadistas[p] = (p, self.capacidade_caminhoes)
-            self.grafo.nodes[p]['agua'] = True
-
-        for p in pontos_agua:
-            self.grafo.nodes[p]['agua'] = True
-
         self.fogo_ativo = []
         self.fogos_apagados = []
+
+        if grafo is not None:
+            self.grafo = grafo
+            self.postos_brigadistas = set(postos_brigadistas or [])
+            for i in self.grafo.nodes:
+                self.grafo.nodes[i].setdefault('fogo', False)
+                self.grafo.nodes[i].setdefault('agua', False)
+                self.grafo.nodes[i].setdefault('queimado', False)
+                self.grafo.nodes[i]['posto_brigadista'] = i in self.postos_brigadistas
+
+            for p in self.postos_brigadistas:
+                self.brigadistas[p] = (p, self.capacidade_caminhoes)
+                self.grafo.nodes[p]['agua'] = True
+
+            for p in pontos_agua or []:
+                self.grafo.nodes[p]['agua'] = True
+
+        else:
+            if num_vertices is None or num_arestas is None:
+                raise ValueError("Se o grafo não for fornecido, num_vertices e num_arestas são obrigatórios.")
+
+            self.grafo = nx.Graph()
+            self.postos_brigadistas = set(postos_brigadistas or [])
+
+            for i in range(num_vertices):
+                self.grafo.add_node(
+                    i,
+                    fogo=False,
+                    agua=False,
+                    queimado=False,
+                    posto_brigadista=(i in self.postos_brigadistas)
+                )
+
+            arestas_adicionadas = set()
+            while len(arestas_adicionadas) < num_arestas:
+                u, v = random.sample(range(num_vertices), 2)
+                if (u, v) not in arestas_adicionadas and (v, u) not in arestas_adicionadas:
+                    peso = random.randint(1, 10)
+                    self.grafo.add_edge(u, v, weight=peso)
+                    arestas_adicionadas.add((u, v))
+
+            for p in self.postos_brigadistas:
+                self.brigadistas[p] = (p, self.capacidade_caminhoes)
+                self.grafo.nodes[p]['agua'] = True
+
+            for p in pontos_agua or []:
+                self.grafo.nodes[p]['agua'] = True
+
         self.pos = nx.spring_layout(self.grafo)
 
 
@@ -220,27 +243,56 @@ class FirePreventionandFight:
                     self.brigadistas[brigadista] = self.deslocar_brigadista(
                         brigadista, caminho, agua
                     )
-
-    def deslocar_brigadista(self, brigadista, caminho, agua):
+                    
+    def encontrar_caminho_ate_agua_ou_posto(self, origem):
         """
-        Move o brigadista ao longo de um caminho até o destino, podendo 
-        reabastecer água ou apagar fogo no final do trajeto.
+        Encontra o caminho mais curto de 'origem' até um ponto com água 
+        ou um posto de brigadistas, para reabastecimento.
 
         Parâmetros:
-        - brigadista (int): identificador do brigadista.
-        - caminho (list[int]): lista de vértices que representam o trajeto.
+        - origem (str): o nó atual onde o brigadista se encontra.
+
+        Retorna:
+        - list[str] | None: lista de nós que compõem o caminho mais curto 
+        até o ponto de reabastecimento. Retorna None se não houver caminho.
+        """
+        destinos_possiveis = [
+            n for n in self.grafo.nodes
+            if self.grafo.nodes[n].get('agua') or
+            self.grafo.nodes[n].get('posto_brigadista')
+        ]
+
+        menor_caminho = None
+        menor_distancia = float('inf')
+
+        for destino in destinos_possiveis:
+            try:
+                caminho = nx.shortest_path(
+                    self.grafo, origem, destino, weight='weight'
+                )
+                distancia = nx.shortest_path_length(
+                    self.grafo, origem, destino, weight='weight'
+                )
+                if distancia < menor_distancia:
+                    menor_distancia = distancia
+                    menor_caminho = caminho
+            except nx.NetworkXNoPath:
+                continue  # Ignora destinos inacessíveis
+
+        return menor_caminho
+    
+    def deslocar_brigadista(self, brigadista, caminho, agua):
+        """
+        Move o brigadista ao longo do caminho indicado ou até um ponto
+        de reabastecimento se estiver sem água. Apaga o fogo ao final.
+
+        Parâmetros:
+        - brigadista (str): nome ou ID do brigadista.
+        - caminho (list[str]): lista de nós representando o trajeto.
         - agua (int): quantidade atual de água do brigadista.
 
-        Retorno:
-        - Tupla (nova_posição, nova_quantidade_agua) representando o estado
-        atualizado do brigadista após o deslocamento.
-
-        Lógica:
-        - Se o caminho for vazio, o brigadista permanece na posição atual.
-        - Durante o percurso (exceto destino), se passar por um ponto de 
-        água, reabastece e termina o movimento ali.
-        - Se o destino estiver em chamas, o fogo é apagado e a água consumida.
-        - Se não houver fogo no destino, apenas atualiza a posição.
+        Retorna:
+        - tuple(str, int): nova posição do brigadista e nova quantidade de água.
         """
         if not caminho:
             return self.brigadistas[brigadista]
@@ -249,25 +301,35 @@ class FirePreventionandFight:
         destino = caminho[-1]
         caminho_percorrido = caminho[1:-1]
 
-        print(
-            f"🚒 Brigadista {brigadista} ({agua}L) saindo de {posicao_atual} "
-            f"para apagar fogo em {destino}. Passou por {caminho_percorrido}"
-        )
+        if agua <= 0:
+            print(f"🚫 Brigadista {brigadista} está sem água. "
+                f"Buscando ponto de reabastecimento...")
+            caminho_ate_agua = self.encontrar_caminho_ate_agua_ou_posto(
+                posicao_atual
+            )
 
-        # Reabastecimento durante o trajeto (antes do destino)
+            if caminho_ate_agua:
+                nova_posicao = caminho_ate_agua[-1]
+                print(f"💧 Brigadista {brigadista} indo reabastecer em "
+                    f"{nova_posicao} via {caminho_ate_agua}")
+                return (nova_posicao, self.capacidade_caminhoes)
+
+            print(f"🛑 Brigadista {brigadista} não encontrou ponto de água.")
+            return self.brigadistas[brigadista]
+
+        print(f"🚒 Brigadista {brigadista} ({agua}L) saindo de {posicao_atual} "
+            f"para apagar fogo em {destino}. Passou por {caminho_percorrido}")
+
         for v in caminho_percorrido:
             if self.grafo.nodes[v]['agua']:
                 print(f"💧 Brigadista {brigadista} reabastecendo em {v}.")
                 return (v, self.capacidade_caminhoes)
 
-        # Apaga o fogo se ainda estiver ativo no destino
         if self.grafo.nodes[destino]['fogo']:
             self.apagar_fogo(destino)
             agua -= self.consumo_por_fogo
-            print(
-                f"🔥 Fogo apagado em {destino} pelo brigadista {brigadista} "
-                f"(Restante: {agua}L)."
-            )
+            print(f"🔥 Fogo apagado em {destino} pelo brigadista {brigadista} "
+                f"(Restante: {agua}L).")
             return (destino, agua)
 
         return (destino, agua)
