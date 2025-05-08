@@ -1,2 +1,2 @@
 from FirePrevention.FirePrevention import FirePreventionandFight
-print('FirePreventionandFight')
+print('import FirePreventionandFight ✔')
