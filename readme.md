@@ -2,7 +2,7 @@
  **Nome**: Kaio Brasil da Silva.  
  **Matricula**: 2021007286  
 
-Os exemplos de como utilizar a simulação e os codigos encontram-se na pasta notebook, já os código em si encontram-se na pasta FirePrevention.  
+Os exemplos de como utilizar a simulação e os codigos encontram-se na pasta notebook e támbem no [video](https://drive.google.com/file/d/11XKMhrX2pux6Pyrny-visQO4EvDrsi-7/view?usp=sharing) explicativo do projeto, já os código em si encontram-se na pasta FirePrevention.  
 
 Este sistema simula o comportamento de brigadistas em um grafo de localidades, onde eles combatem incêndios, recarregam água e se movimentam estrategicamente.
 O sistema considera a capacidade dos caminhões-pipa, a distância entre os nós e a presença de recursos como água e postos de brigadistas.Abaixo, é explicado algumas pontos de interesses sobre a simulação e o seu funcionamento.  
