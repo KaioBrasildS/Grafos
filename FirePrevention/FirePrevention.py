@@ -1,8 +1,7 @@
-import networkx as nx
 import random
 from collections import deque
 
-
+import networkx as nx
 import matplotlib.pyplot as plt
 
 class FirePreventionandFight:
