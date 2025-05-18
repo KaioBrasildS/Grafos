@@ -159,7 +159,7 @@ estado: 2
 🔥 Fogo ativo nos vértices após a ação dos brigadistas: [3, 6, 7]
 
 
-![ texto](images/output2.png)
+![ texto](Images/output2.png)
 
 
 Esse exemplo mostra que o brigadista foi acionado corretamente, seguiu o trajeto ideal e extinguiu o fogo de forma eficiente, mantendo parte de sua energia disponível para futuras ações.
